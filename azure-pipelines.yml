@@ -1,0 +1,42 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildConfiguration: 'Release'
+  dotnetSdkVersion: '8.x' # Replace with the version of .NET Core SDK you're using
+
+stages:
+- stage: Build
+  displayName: 'Build stage'
+  jobs:
+  - job: Build
+    displayName: 'Build job'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetSdkVersion)'
+
+    - script: dotnet restore
+      displayName: 'Restore dependencies'
+
+    - script: dotnet build --configuration $(buildConfiguration)
+      displayName: 'Build solution'
+
+    # Publish the artifacts for deployment
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        publishWebProjects: true
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+
+    # Publish the build artifacts
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: 'drop'
+
