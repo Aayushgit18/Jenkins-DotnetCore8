@@ -1,23 +1,21 @@
-# Stage 1: Build
+# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy project file and restore dependencies
-COPY ["HelloWorldApp.web/HelloWorldApp.web.csproj", "./"]
+# Copy only the project file and restore dependencies
+COPY ["HelloWorldApp.web.csproj", "./"]
 RUN dotnet restore "HelloWorldApp.web.csproj"
 
-# Copy all other source files
-COPY HelloWorldApp.web/. ./
+# Copy everything else
+COPY . ./
 RUN dotnet build "HelloWorldApp.web.csproj" -c Release -o /app/build
 
-# Stage 2: Publish
+# Publish stage
 FROM build AS publish
 RUN dotnet publish "HelloWorldApp.web.csproj" -c Release -o /app/publish
 
-# Stage 3: Final runtime image
+# Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "HelloWorldApp.web.dll"]
