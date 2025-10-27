@@ -1,36 +1,28 @@
 ---
-- name: Deploy .NET Core App from S3
-  hosts: dotnet_target
+- name: Deploy .NET Core App
+  hosts: target
   become: yes
   vars:
-    app_user: ubuntu
-    deploy_dir: /opt/helloworldapp
-    svc_name: helloworldapp
+    s3_bucket: my-dotnet-artifacts
+    branch: main
+
   tasks:
-    - name: Ensure deploy directory exists
+
+    - name: Ensure /var/www/myapp exists
       file:
-        path: "{{ deploy_dir }}"
+        path: /var/www/myapp
         state: directory
-        owner: "{{ app_user }}"
-        group: "{{ app_user }}"
-        mode: '0755'
 
     - name: Download artifact from S3
-      ansible.builtin.shell: |
-        aws s3 cp "s3://{{ artifact_s3_bucket }}/{{ artifact_key }}" /tmp/{{ artifact_key }}
-      args:
-        creates: /tmp/{{ artifact_key }}
+      aws_s3:
+        bucket: "{{ s3_bucket }}"
+        object: "{{ branch }}/"
+        dest: /var/www/myapp/
+        mode: get
+        recursive: yes
 
-    - name: Unzip artifact
-      unarchive:
-        src: /tmp/{{ artifact_key }}
-        dest: "{{ deploy_dir }}/"
-        owner: "{{ app_user }}"
-        group: "{{ app_user }}"
-        remote_src: yes
-
-    - name: Restart service
+    - name: Restart application service
       systemd:
-        name: "{{ svc_name }}"
+        name: myapp.service
         state: restarted
         enabled: yes
