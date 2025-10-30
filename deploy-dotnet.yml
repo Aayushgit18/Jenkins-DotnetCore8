@@ -1,0 +1,41 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    s3_bucket: dotnetcore-deploy
+    app_zip: app.zip
+    deploy_dir: /home/devops/HelloWorldApp
+    dll_name: HelloWorldApp.web.dll
+
+  tasks:
+    - name: Remove existing deployment folder
+      ansible.builtin.file:
+        path: "{{ deploy_dir }}"
+        state: absent
+
+    - name: Create deployment folder
+      ansible.builtin.file:
+        path: "{{ deploy_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Download app.zip from S3
+      ansible.builtin.aws_s3:
+        bucket: "{{ s3_bucket }}"
+        object: "{{ app_zip }}"
+        dest: "/tmp/{{ app_zip }}"
+        mode: get
+        region: us-east-1
+
+    - name: Unzip the application
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ app_zip }}"
+        dest: "{{ deploy_dir }}"
+        remote_src: yes
+
+    - name: Run the .NET Core app
+      ansible.builtin.command:
+        cmd: "dotnet {{ deploy_dir }}/{{ dll_name }}"
+      async: 0
+      poll: 0
+      ignore_errors: yes
